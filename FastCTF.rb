@@ -6,6 +6,8 @@ class FastCTF
     @domain = domain
     @subdomains_wordlist = subdomains_wordlist
     @directories_wordlist = directories_wordlist
+    @path_to_default_wordlist_for_dircheck = Dir.pwd + "/default_wordlists/directory-list-2.3-medium.txt"
+    @path_to_default_wordlist_for_subdomains = Dir.pwd + "/default_wordlists/subdomains-top1million-110000.txt"
   end
 
   def run
@@ -29,7 +31,11 @@ class FastCTF
   end
 
   def run_gobuster_on_directory_wordlist
-    system("sudo gobuster dir -w #{@directories_wordlist} --url #{@ip} -x txt,php,js,css")
+    if @directories_wordlist == "" || @directories_wordlist.nil?
+      system("sudo gobuster dir -w #{@path_to_default_wordlist_for_dircheck} --url #{@ip} -x txt,php,js,css")
+    else
+      system("sudo gobuster dir -w #{@directories_wordlist} --url #{@ip} -x txt,php,js,css")
+    end
   end
 
   def want_to_scan_subdomains?
@@ -46,7 +52,7 @@ class FastCTF
   end
 
   def run_gobuster_on_subdomains_wordlist
-    system("gobuster dns -w #{@subdomains_wordlist} --domain #{@domain}")
+    system("sudo gobuster dns -w #{@subdomains_wordlist} --domain #{@domain}")
   end
 end
 
@@ -58,11 +64,14 @@ sleep(1.5)
 
 puts '[+] Input IP: '
 ip = gets.chomp
+
 puts '[+] Input domain name (you can skip this): '
 domain = gets.chomp
-puts '[+] Input path to wordlist for subdomains check (you can skip this): '
+
+puts '[+] Input path to wordlist for subdomains check (default: subdomains-top1million-110000.txt): '
 subdomains_wordlist = gets.chomp
-puts '[+] Input path to wordlist for directory check: '
+
+puts '[+] Input path to wordlist for directory check(deault: directory-list-2.3-medium.txt): '
 directories_wordlist = gets.chomp
 
 FastCTF.new(
