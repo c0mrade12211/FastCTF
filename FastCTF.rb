@@ -1,4 +1,5 @@
 require 'socket'
+require 'net/http'
 
 class FastCTF
   def initialize(ip:, domain: '', subdomains_wordlist: '', directories_wordlist: '')
@@ -11,11 +12,42 @@ class FastCTF
   end
 
   def run
+    scanning_directory
     scan_with_nmap_and_gobuster
     scan_subdomains if want_to_scan_subdomains?
   end
 
   private
+
+  def scanning_directory
+    puts "[+] Input url(default will be use:ip)"
+    url = gets.chomp
+    if url.nil? || url.empty?
+      File.open(@path_to_default_wordlist_for_dircheck, "r").each_line do |line|
+        url_to_check = URI.parse("http://#{@ip}/#{line.chomp}")
+        http = Net::HTTP.new(url_to_check.host, url_to_check.port)
+        request = Net::HTTP::Head.new(url_to_check)
+        response = http.request(request)
+        if response.code == '200'
+          puts "[+] Directory found. #{line}"
+          puts "|--> code: #{response.code}"
+          puts "|--> Url #{url}"
+        else
+          File.open(@path_to_default_wordlist_for_dircheck, "r").each_line do |line|
+            url_to_check = URI.parse(@url + "/" + line.chomp)
+            http = Net::HTTP.new(url.host, url.port)
+            request = Net::HTTP::Head.new(url)
+            response = http.request(request)
+            if response.code == '200'
+              puts "[+] Directory found. #{line}"
+              puts "|--> code: #{response.code}"
+              puts "|--> Url #{url}"
+            end
+          end
+        end
+      end
+    end
+  end
 
   def scan_with_nmap_and_gobuster
     puts "[+] Scanning #{@ip}..."
@@ -24,17 +56,9 @@ class FastCTF
       TCPSocket.new(@ip, 80)
       puts "[+] Port 80 open on #{@ip}"
       puts '[+] Starting gobuster'
-      run_gobuster_on_directory_wordlist
+      scanning_directory
     rescue Errno::ECONNREFUSED, Errno::ETIMEDOUT
       puts "[-] Port 80 closed on #{@ip}"
-    end
-  end
-
-  def run_gobuster_on_directory_wordlist
-    if @directories_wordlist == "" || @directories_wordlist.nil?
-      system("sudo gobuster dir -w #{@path_to_default_wordlist_for_dircheck} --url #{@ip} -x txt,php,js,css")
-    else
-      system("sudo gobuster dir -w #{@directories_wordlist} --url #{@ip} -x txt,php,js,css")
     end
   end
 
