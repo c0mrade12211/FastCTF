@@ -12,8 +12,8 @@ class FastCTF
   end
 
   def run
-    scanning_directory
     scan_with_nmap_and_gobuster
+    scanning_directory
     scan_subdomains if want_to_scan_subdomains?
   end
 
@@ -25,25 +25,28 @@ class FastCTF
     if url.nil? || url.empty?
       File.open(@path_to_default_wordlist_for_dircheck, "r").each_line do |line|
         url_to_check = URI.parse("http://#{@ip}/#{line.chomp}")
+        puts url_to_check
         http = Net::HTTP.new(url_to_check.host, url_to_check.port)
         request = Net::HTTP::Head.new(url_to_check)
         response = http.request(request)
+        puts "[+] Scan will start"
         if response.code == '200'
           puts "[+] Directory found. #{line}"
           puts "|--> code: #{response.code}"
           puts "|--> Url #{url}"
-        else
-          File.open(@path_to_default_wordlist_for_dircheck, "r").each_line do |line|
-            url_to_check = URI.parse(@url + "/" + line.chomp)
-            http = Net::HTTP.new(url.host, url.port)
-            request = Net::HTTP::Head.new(url)
-            response = http.request(request)
-            if response.code == '200'
-              puts "[+] Directory found. #{line}"
-              puts "|--> code: #{response.code}"
-              puts "|--> Url #{url}"
-            end
-          end
+        end
+      end
+    else
+      File.open(@path_to_default_wordlist_for_dircheck, "r").each_line do |line|
+        url_to_check = URI.parse(url + "/" + line.chomp)
+        http = Net::HTTP.new(url_to_check.host, url_to_check.port)
+        request = Net::HTTP::Head.new(url_to_check)
+        response = http.request(request)
+        puts "[+] Scan will start. "
+        if response.code == '200'
+          puts "[+] Directory found. #{line}"
+          puts "|--> code: #{response.code}"
+          puts "|--> Url #{url}"
         end
       end
     end
@@ -55,7 +58,7 @@ class FastCTF
     begin
       TCPSocket.new(@ip, 80)
       puts "[+] Port 80 open on #{@ip}"
-      puts '[+] Starting gobuster'
+      puts '[+] Starting directory checking'
       scanning_directory
     rescue Errno::ECONNREFUSED, Errno::ETIMEDOUT
       puts "[-] Port 80 closed on #{@ip}"
@@ -64,7 +67,10 @@ class FastCTF
 
   def want_to_scan_subdomains?
     print 'Do you want to scan subdomains? (y/n): '
-    gets.chomp.downcase == 'y'
+    response = gets.chomp
+    if response.downcase == 'y'
+      scan_subdomains
+    end
   end
 
   def scan_subdomains
@@ -92,10 +98,10 @@ ip = gets.chomp
 puts '[+] Input domain name (you can skip this): '
 domain = gets.chomp
 
-puts '[+] Input path to wordlist for subdomains check (default: subdomains-top1million-110000.txt): '
+puts '[+] Input path to wordlist for subdomains check (default: subdomains-top1million-110000.txt):'
 subdomains_wordlist = gets.chomp
 
-puts '[+] Input path to wordlist for directory check(deault: directory-list-2.3-medium.txt): '
+puts '[+] Input path to wordlist for directory check(default: directory-list-2.3-medium.txt): '
 directories_wordlist = gets.chomp
 
 FastCTF.new(
